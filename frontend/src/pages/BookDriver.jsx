@@ -570,7 +570,7 @@ export default function BookDriver() {
     }
 
     /*
-     * Calculate driving route.
+     * Calculate shorter-distance driving route.
      */
     async function calculateRoute(
       origin,
@@ -591,19 +591,33 @@ export default function BookDriver() {
 
         routePolylinesRef.current = [];
 
+        /*
+         * Request Google's shorter-distance
+         * reference route.
+         *
+         * This prioritizes travel distance
+         * instead of the default ETA-oriented
+         * route selection.
+         */
         const request = {
           origin,
           destination,
           travelMode: "DRIVING",
+
+          requestedReferenceRoutes: [
+            "SHORTER_DISTANCE"
+          ],
+
           fields: [
             "path",
             "distanceMeters",
-            "durationMillis"
+            "durationMillis",
+            "routeLabels"
           ]
         };
 
         console.log(
-          "GOOGLE MAPS: Calculating route..."
+          "GOOGLE MAPS: Calculating shorter-distance route..."
         );
 
         const { routes } =
@@ -627,7 +641,39 @@ export default function BookDriver() {
           return;
         }
 
-        const route = routes[0];
+        /*
+         * Google returns the normal/default route
+         * as well as the shorter-distance reference
+         * route when requested.
+         *
+         * Find the route specifically labeled
+         * SHORTER_DISTANCE.
+         */
+        const shorterDistanceRoute =
+          routes.find(
+            (route) =>
+              route.routeLabels?.includes(
+                "SHORTER_DISTANCE"
+              )
+          );
+
+        /*
+         * Use the shorter-distance route when
+         * Google provides it.
+         *
+         * Fall back to the first route only if
+         * Google does not return the reference route.
+         */
+        const route =
+          shorterDistanceRoute ||
+          routes[0];
+
+        console.log(
+          "GOOGLE MAPS: Selected route:",
+          route.routeLabels || [
+            "DEFAULT_ROUTE"
+          ]
+        );
 
         /*
          * Draw route.
@@ -730,7 +776,7 @@ export default function BookDriver() {
         setError("");
 
         console.log(
-          "GOOGLE MAPS: Route calculated successfully."
+          "GOOGLE MAPS: Shorter-distance route calculated successfully."
         );
       } catch (error) {
         console.error(
